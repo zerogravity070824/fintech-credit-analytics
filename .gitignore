@@ -1,0 +1,9 @@
+
+target/
+dbt_packages/
+logs/
+
+# Python environment & secrets
+venv/
+__pycache__/
+.env

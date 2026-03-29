@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: home_credit_raw        # Nama alias untuk pemanggilan di dbt
+    database: potent-catwalk-484317-n0 # Project ID dari Bigquery
+    schema: raw_layer            # Dataset Anda dari Bigquery
+    tables:
+      - name: application_train
+      - name: bureau
