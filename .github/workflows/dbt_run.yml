@@ -1,0 +1,52 @@
+name: Jalankan dbt Otomatis
+
+# Kapan robot ini jalan?
+on:
+  push:
+    branches:
+      - main # Jalan setiap kali ada kode baru di-push ke main
+
+jobs:
+  dbt-run-job:
+    runs-on: ubuntu-latest
+
+    # Sesuai nama folder dbt kamu di screenshot
+    defaults:
+      run:
+        working-directory: ./my_first_project
+
+    steps:
+      - name: 📥 Mengambil Kode dari GitHub
+        uses: actions/checkout@v4
+
+      - name: 🐍 Menyiapkan Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Menginstal dbt-bigquery
+        run: pip install dbt-bigquery
+
+      - name: 🔐 Autentikasi ke Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: 🛠️ Setup profil dbt (Koneksi ke BigQuery)
+        run: |
+          mkdir -p ~/.dbt
+          echo "
+          my_first_project:
+            target: dev
+            outputs:
+              dev:
+                type: bigquery
+                method: oauth
+                project: potent-catwalk-484317-n0 # <-- GANTI INI DENGAN PROJECT ID ASLI GCP
+                dataset: dbt_staging # <-- GANTI SESUAI NAMA DATASET DBT
+                threads: 4
+                location: asia-southeast2
+          " > ~/.dbt/profiles.yml
+
+      - name: 🚀 Jalankan dbt
+        run: dbt run
