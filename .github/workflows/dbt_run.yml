@@ -1,15 +1,18 @@
 name: Jalankan dbt Otomatis
 
-# Kapan robot ini jalan?
+# 1. ORCHESTRATION & TRIGGER
 on:
   push:
     branches:
-      - main # Jalan setiap kali ada kode baru di-push ke main
+      - main # (CI/CD) Jalan otomatis setiap ada git push
+  schedule:
+    # (Orchestration) Jalan otomatis jam 6 pagi WITA setiap hari.
+    # Karena server GitHub menggunakan waktu UTC, jam 06:00 WITA = jam 22:00 UTC hari sebelumnya.
+    - cron: '0 22 * * *' 
 
 jobs:
   dbt-run-job:
     runs-on: ubuntu-latest
-
 
     steps:
       - name: 📥 Mengambil Kode dari GitHub
@@ -38,11 +41,16 @@ jobs:
               dev:
                 type: bigquery
                 method: oauth
-                project: potent-catwalk-484317-n0 # <-- GANTI INI DENGAN PROJECT ID ASLI GCP
-                dataset: dbt_staging # <-- GANTI SESUAI NAMA DATASET DBT
+                project: potent-catwalk-484317-n0 
+                dataset: dbt_staging
                 threads: 4
                 location: asia-southeast2
           " > ~/.dbt/profiles.yml
 
-      - name: 🚀 Jalankan dbt
+      # 2. CONTINUOUS INTEGRATION (CI)
+      - name: 🧪 Jalankan dbt Test
+        run: dbt test
+
+      # 3. CONTINUOUS DEPLOYMENT (CD)
+      - name: 🚀 Jalankan dbt Run
         run: dbt run
