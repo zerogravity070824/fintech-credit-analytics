@@ -10,10 +10,6 @@ jobs:
   dbt-run-job:
     runs-on: ubuntu-latest
 
-    # Sesuai nama folder dbt kamu di screenshot
-    defaults:
-      run:
-        working-directory: ./my_first_project
 
     steps:
       - name: 📥 Mengambil Kode dari GitHub
