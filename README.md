@@ -15,7 +15,7 @@ Pipeline otomatis ini dibangun untuk mengurangi waktu pemrosesan data historis n
 * **Visualization / BI:** Looker Studio
 * **Language:** SQL, Python, YAML
 
-*(Catatan untuk Ilham: Nanti kamu bisa menambahkan screenshot gambar Arsitektur Data kamu di sini)*
+![Data Architecture](arsitektur.png)
 
 ---
 
