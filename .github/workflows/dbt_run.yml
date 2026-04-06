@@ -1,56 +1,104 @@
 name: Jalankan dbt Otomatis
 
+# ==============================================================================
 # 1. ORCHESTRATION & TRIGGER
+# ==============================================================================
 on:
   push:
     branches:
-      - main # (CI/CD) Jalan otomatis setiap ada git push
+      - main # (CI) Jalankan test saat ada push ke main
   schedule:
-    # (Orchestration) Jalan otomatis jam 6 pagi WITA setiap hari.
-    # Karena server GitHub menggunakan waktu UTC, jam 06:00 WITA = jam 22:00 UTC hari sebelumnya.
-    - cron: '0 22 * * *' 
+    # (Orchestration) Jalan otomatis jam 06:00 WITA = 22:00 UTC hari sebelumnya
+    - cron: '0 22 * * *'
+  workflow_dispatch: # Tambahan: bisa dijalankan manual dari UI GitHub
 
 jobs:
   dbt-run-job:
     runs-on: ubuntu-latest
 
     steps:
+      # ------------------------------------------------------------------
       - name: 📥 Mengambil Kode dari GitHub
         uses: actions/checkout@v4
 
+      # ------------------------------------------------------------------
       - name: 🐍 Menyiapkan Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: 📦 Menginstal dbt-bigquery
-        run: pip install dbt-bigquery
+      # ------------------------------------------------------------------
+      # IMPROVEMENT: Cache pip untuk mempercepat build (hemat ~2-3 menit)
+      - name: 📦 Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-dbt-bigquery-1.8.2
+          restore-keys: |
+            ${{ runner.os }}-pip-dbt-bigquery-
 
+      # ------------------------------------------------------------------
+      # FIX WARNING #1: Pinned ke versi spesifik agar tidak breaking
+      - name: 📦 Menginstal dbt-bigquery
+        run: pip install dbt-bigquery==1.8.2
+
+      # ------------------------------------------------------------------
       - name: 🔐 Autentikasi ke Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      # ------------------------------------------------------------------
+      # FIX BUG #1: Ganti method dari 'oauth' ke 'service-account'
+      # FIX WARNING #2: Project ID & dataset dipindahkan ke GitHub Secrets
       - name: 🛠️ Setup profil dbt (Koneksi ke BigQuery)
         run: |
           mkdir -p ~/.dbt
-          echo "
+          cat > ~/.dbt/profiles.yml << 'EOF'
           my_first_project:
             target: dev
             outputs:
               dev:
                 type: bigquery
-                method: oauth
-                project: potent-catwalk-484317-n0 
-                dataset: dbt_staging
+                method: service-account          # FIX: bukan 'oauth'
+                project: ${{ secrets.GCP_PROJECT_ID }}   # FIX: dari secret
+                dataset: ${{ secrets.DBT_DATASET }}      # FIX: dari secret
+                keyfile: ${{ steps.auth.outputs.credentials_file_path }}
                 threads: 4
                 location: asia-southeast2
-          " > ~/.dbt/profiles.yml
+                timeout_seconds: 300
+          EOF
 
+      # ------------------------------------------------------------------
+      # FIX BUG #2: Pastikan working directory dan project path benar
+      # Jika dbt_project.yml ada di subfolder, ubah path di bawah ini
+      - name: 🔍 Verifikasi koneksi dbt
+        run: dbt debug --project-dir . --profiles-dir ~/.dbt
+
+      # ------------------------------------------------------------------
+      # FIX WARNING #4: Install dbt packages terlebih dahulu
+      - name: 📦 Install dbt packages
+        run: dbt deps --project-dir . --profiles-dir ~/.dbt
+
+      # ------------------------------------------------------------------
+      # IMPROVEMENT: Cek kesegaran data source sebelum run (penting untuk fintech)
+      - name: 🔎 Cek freshness data source
+        run: dbt source freshness --project-dir . --profiles-dir ~/.dbt
+        continue-on-error: true  # Jangan gagalkan seluruh pipeline jika stale
+
+      # ------------------------------------------------------------------
       # 2. CONTINUOUS INTEGRATION (CI)
-      - name: 🧪 Jalankan dbt Test
-        run: dbt test
+      # FIX WARNING #3: dbt run dijalankan SEBELUM dbt test
+      - name: 🚀 Jalankan dbt Run (CD)
+        run: dbt run --project-dir . --profiles-dir ~/.dbt
 
+      # ------------------------------------------------------------------
       # 3. CONTINUOUS DEPLOYMENT (CD)
-      - name: 🚀 Jalankan dbt Run
-        run: dbt run
+      # Test dijalankan SETELAH run, menguji data yang baru di-build
+      - name: 🧪 Jalankan dbt Test (CI)
+        run: dbt test --project-dir . --profiles-dir ~/.dbt
+
+      # ------------------------------------------------------------------
+      # IMPROVEMENT: Generate dokumentasi (opsional, bisa di-comment out)
+      # - name: 📄 Generate dbt docs
+      #   run: dbt docs generate --project-dir . --profiles-dir ~/.dbt
