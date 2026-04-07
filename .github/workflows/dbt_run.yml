@@ -44,6 +44,7 @@ jobs:
 
       # ------------------------------------------------------------------
       - name: Autentikasi ke Google Cloud
+        id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
