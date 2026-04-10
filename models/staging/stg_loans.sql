@@ -4,31 +4,33 @@ WITH source AS (
 
 renamed_and_casted AS (
     SELECT
-        -- Kolom ID dan Target
-        CAST(SK_ID_CURR AS STRING) AS application_id,
-        CAST(TARGET AS INT64) AS is_default,
-        CAST(NAME_CONTRACT_TYPE AS STRING) AS contract_type,
+        -- 1. Identifiers & Target
+        CAST(sk_id_curr AS STRING) AS application_id,
+        CAST(target AS INT64) AS is_default,
+        CAST(name_contract_type AS STRING) AS contract_type,
         
-        -- Kolom Keuangan
-        CAST(AMT_INCOME_TOTAL AS FLOAT64) AS total_income_idr,
-        CAST(AMT_CREDIT AS FLOAT64) AS loan_amount_idr,
-        CAST(AMT_ANNUITY AS FLOAT64) AS loan_annuity_idr,
+        -- 2. Financial Metrics (Menggunakan NUMERIC untuk presisi uang)
+        CAST(amt_income_total AS NUMERIC) AS total_income_idr,
+        CAST(amt_credit AS NUMERIC) AS loan_amount_idr,
+        CAST(amt_annuity AS NUMERIC) AS loan_annuity_idr,
         
-        -- Kolom Waktu
-        CAST(DAYS_BIRTH AS INT64) AS days_birth,
-        CAST(DAYS_EMPLOYED AS INT64) AS days_employed,
-
-        -- 💡 TAMBAHAN BARU: Kolom Biodata buat Dimension Table
-        CAST(CODE_GENDER AS STRING) AS CODE_GENDER,
-        CAST(FLAG_OWN_CAR AS STRING) AS FLAG_OWN_CAR,
-        CAST(FLAG_OWN_REALTY AS STRING) AS FLAG_OWN_REALTY,
-        CAST(CNT_CHILDREN AS INT64) AS CNT_CHILDREN,
-        CAST(NAME_INCOME_TYPE AS STRING) AS NAME_INCOME_TYPE,
-        CAST(NAME_EDUCATION_TYPE AS STRING) AS NAME_EDUCATION_TYPE,
-        CAST(NAME_FAMILY_STATUS AS STRING) AS NAME_FAMILY_STATUS,
-        CAST(NAME_HOUSING_TYPE AS STRING) AS NAME_HOUSING_TYPE
+        -- 3. Temporal Metrics (Tetap dipertahankan negatif sesuai raw, diubah di intermediate)
+        CAST(days_birth AS INT64) AS days_birth,
+        -- Mengubah anomali 365243 menjadi NULL agar tidak merusak agregasi rata-rata
+        NULLIF(CAST(days_employed AS INT64), 365243) AS days_employed, 
+        
+        -- 4. Demographics & Dimension Attributes (Semua lowercase snake_case)
+        CAST(code_gender AS STRING) AS gender,
+        CAST(flag_own_car AS STRING) AS has_car_flag,
+        CAST(flag_own_realty AS STRING) AS has_realty_flag,
+        CAST(cnt_children AS INT64) AS total_children,
+        CAST(name_income_type AS STRING) AS income_type,
+        CAST(name_education_type AS STRING) AS education_type,
+        CAST(name_family_status AS STRING) AS family_status,
+        CAST(name_housing_type AS STRING) AS housing_type
 
     FROM source
 )
 
-SELECT DISTINCT * FROM renamed_and_casted
+-- Menghapus DISTINCT. Kita akan pasang test "unique" di file schema.yml untuk application_id
+SELECT * FROM renamed_and_casted

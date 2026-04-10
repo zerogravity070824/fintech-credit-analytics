@@ -32,3 +32,32 @@ sources:
               - relationships:
                   to: source('home_credit_raw', 'application_train')
                   field: SK_ID_CURR
+
+# 💡 TAMBAHAN BARU: Testing untuk model staging
+models:
+  - name: stg_loans
+    description: "Staging model untuk data aplikasi kredit."
+    columns:
+      - name: application_id
+        description: "Primary key aplikasi."
+        tests:
+          - unique
+          - not_null
+          
+  - name: stg_bureau
+    description: "Staging model untuk histori biro kredit."
+    columns:
+      - name: bureau_id
+        description: "Primary key histori biro."
+        tests:
+          - unique
+          - not_null
+      - name: application_id
+        description: "Foreign key ke stg_loans."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_loans')
+              field: application_id
+              config:
+                severity: warn
