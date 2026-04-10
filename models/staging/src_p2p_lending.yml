@@ -1,9 +1,34 @@
 version: 2
 
 sources:
-  - name: home_credit_raw        # Nama alias untuk pemanggilan di dbt
-    database: potent-catwalk-484317-n0 # Project ID dari Bigquery
-    schema: raw_layer            # Dataset Anda dari Bigquery
+  - name: home_credit_raw
+    description: "Raw layer dari Kaggle Home Credit Default Risk dataset."
+    database: "potent-catwalk-484317-n0"
+    schema: raw_layer
+    tags: ['home_credit', 'raw']
+
     tables:
       - name: application_train
+        description: "Data aplikasi kredit utama beserta label target (TARGET)."
+        columns:
+          - name: SK_ID_CURR
+            description: "Primary key aplikasi kredit."
+            tests:
+              - not_null
+              - unique
+
       - name: bureau
+        description: "Data historis kredit nasabah dari biro kredit eksternal."
+        columns:
+          - name: SK_ID_BUREAU
+            description: "Primary key record biro kredit."
+            tests:
+              - not_null
+              - unique
+          - name: SK_ID_CURR
+            description: "Foreign key ke application_train."
+            tests:
+              - not_null
+              - relationships:
+                  to: source('home_credit_raw', 'application_train')
+                  field: SK_ID_CURR
