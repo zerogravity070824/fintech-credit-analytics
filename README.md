@@ -39,7 +39,7 @@ Pipeline mengadopsi pendekatan modular dbt dengan struktur tiga layer:
 
 **Staging Layer (`stg_`)** — Membersihkan data mentah, standarisasi penamaan kolom ke *snake_case*, dan penyesuaian tipe data.
 
-**Intermediate Layer (`int_`)** — JOIN antara profil nasabah (`application_train`) dengan riwayat BI Checking (`bureau`), serta kalkulasi metrik agregat.
+**Intermediate Layer (`int_`)** — JOIN antara profil nasabah (`stg_loans`) dengan riwayat BI Checking (`stg_bureau`), agregasi histori kredit per nasabah, serta kalkulasi **Debt-to-Income Ratio (DTI)** sebagai metrik risiko utama.
 
 **Marts Layer (`dim_`, `fct_`, `obt_`)** — Membangun Dimension dan Fact tables, lalu didenormalisasi menjadi **One Big Table (`obt_credit_risk`)** yang dioptimalkan untuk performa dashboard Looker Studio.
 
@@ -47,13 +47,26 @@ Pipeline mengadopsi pendekatan modular dbt dengan struktur tiga layer:
 
 | Kolom | Tipe | Deskripsi |
 |---|---|---|
-| `applicant_id` | STRING | Primary key unik per nasabah |
-| `application_month` | DATE | Bulan pengajuan kredit |
+| `application_id` | STRING | Primary key unik per pengajuan kredit |
+| `client_id` | STRING | Foreign key ke dim_clients |
+| `is_default` | INT64 | Label default: 0 = Lancar, 1 = Macet |
+| `contract_type` | STRING | Jenis kontrak pinjaman |
+| `total_income_idr` | NUMERIC | Total pendapatan nasabah |
+| `loan_amount_idr` | NUMERIC | Jumlah pinjaman yang diajukan |
+| `loan_annuity_idr` | NUMERIC | Cicilan bulanan pinjaman |
+| `debt_to_income_ratio` | FLOAT64 | Rasio cicilan terhadap pendapatan (DTI) |
+| `total_previous_loans` | INT64 | Jumlah histori kredit di bank lain |
+| `total_bureau_debt_idr` | NUMERIC | Total outstanding hutang di bank lain |
+| `gender` | STRING | Jenis kelamin nasabah |
+| `owns_car` | STRING | Kepemilikan kendaraan |
+| `owns_realty` | STRING | Kepemilikan properti |
+| `total_children` | INT64 | Jumlah tanggungan anak |
 | `income_type` | STRING | Jenis penghasilan nasabah |
-| `loan_purpose` | STRING | Tujuan pengajuan kredit |
-| `loan_amount` | FLOAT64 | Jumlah pinjaman yang diajukan |
-| `bureau_score_segment` | STRING | Segmentasi skor BI Checking (Good / Fair / Poor) |
-| `target` | INT64 | Label default: 0 = Lancar, 1 = Macet |
+| `education_level` | STRING | Tingkat pendidikan nasabah |
+| `family_status` | STRING | Status pernikahan nasabah |
+| `housing_type` | STRING | Jenis tempat tinggal nasabah |
+| `age_years` | INT64 | Umur nasabah dalam tahun |
+| `years_employed` | INT64 | Lama bekerja dalam tahun |
 
 ---
 
@@ -166,10 +179,10 @@ Data dari `obt_credit_risk` dihubungkan langsung ke Looker Studio untuk monitori
 
 Metrics yang dipantau:
 - Default Rate (segmentasi nasabah lancar vs macet)
-- Approval Rate by Application Month
-- Portfolio Distribution by Income Type & Loan Purpose
+- Portfolio Distribution by Income Type & Education Level
+- Debt-to-Income Ratio Distribution
 - Total Applicants & Loan Amount Distribution
-- Bureau Score Segmentation
+- Bureau Debt & Previous Loans Analysis
 
 ---
 
