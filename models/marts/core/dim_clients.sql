@@ -11,14 +11,15 @@ dim_clients AS (
         application_id AS client_id, -- Ini jadi Primary Key buat buku biodata ini
         
         -- DI BAWAH INI ADALAH "KATA SIFAT" (Demografi Profil)
-        CODE_GENDER AS gender,
-        FLAG_OWN_CAR AS owns_car,
-        FLAG_OWN_REALTY AS owns_realty,
-        CNT_CHILDREN AS total_children,
-        NAME_INCOME_TYPE AS income_type,
-        NAME_EDUCATION_TYPE AS education_level,
-        NAME_FAMILY_STATUS AS family_status,
-        NAME_HOUSING_TYPE AS housing_type,
+        -- Memanggil nama yang sudah diubah di stg_loans
+        gender, 
+        has_car_flag AS owns_car,
+        has_realty_flag AS owns_realty,
+        total_children,
+        income_type,
+        education_type AS education_level,
+        family_status,
+        housing_type,
         
         -- Kita ubah umur yang minus ribuan hari jadi umur beneran
         CAST(ABS(days_birth) / 365 AS INT64) AS age_years,
