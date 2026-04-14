@@ -1,26 +1,22 @@
 {{ config(materialized='table') }}
 
-WITH staging_loans AS (
-    -- Kita tetep ngambil dari sumber utama yang udah dicuci
-    SELECT * FROM {{ ref('stg_loans') }}
+WITH int_profile AS (
+    SELECT * FROM {{ ref('int_credit_profile') }}  -- FIX: dari int bukan stg
 ),
 
 fct_loan_applications AS (
     SELECT
-        -- 1. PRIMARY KEY & FOREIGN KEY
-        application_id,              -- ID Struk Kasir (Transaksi)
-        application_id AS client_id, -- Kunci buat nge-link ke buku biodata (dim_clients)
-        
-        -- 2. ATRIBUT TRANSAKSI
+        application_id,
         contract_type,
-        is_default,                  -- Ini Target Variable kita (0 = Lancar, 1 = Macet)
-
-        -- 3. FACTS / MEASURES (Angka-angka kuantitatif)
+        is_default,
         total_income_idr,
         loan_amount_idr,
-        loan_annuity_idr
-
-    FROM staging_loans
+        loan_annuity_idr,
+        -- FIX: tambahkan kolom penting dari int_credit_profile
+        debt_to_income_ratio,
+        total_previous_loans,
+        total_bureau_debt_idr
+    FROM int_profile
 )
 
 SELECT * FROM fct_loan_applications
