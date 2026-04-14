@@ -31,8 +31,7 @@ one_big_table AS (
         c.years_employed
 
     FROM fact_loans f
-    LEFT JOIN dim_clients c
-        ON f.client_id = c.client_id
+    LEFT JOIN dim_clients c ON f.application_id = c.client_id
 )
 
 SELECT * FROM one_big_table
