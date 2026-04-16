@@ -1,24 +1,31 @@
 {{ config(materialized='table') }}
 
 WITH fact_loans AS (
-    -- Ambil struk kasir
     SELECT * FROM {{ ref('fct_loan_applications') }}
 ),
 
 dim_clients AS (
-    -- Ambil buku biodata
     SELECT * FROM {{ ref('dim_clients') }}
 ),
 
 one_big_table AS (
     SELECT
-        -- 1. Ambil semua angka dan ID dari struk kasir (fact_loans)
-        --- 2. * artinya semua kolom. Isinya: ID Transaksi, Jumlah Pinjaman, Status Macet (is_default), dll.
-        f.*,
-        
-        -- 2. Tempelin "Kata Sifat" dari buku biodata (dim_clients)
-        -- 3. c. itu singkatan dari dim_clients.
-        -- (Kita sebutin satu-satu biar rapi dan client_id gak dobel)
+        -- Keys & Target
+        f.application_id,
+        f.is_default,
+        f.contract_type,
+
+        -- Financial Measures
+        f.total_income_idr,
+        f.loan_amount_idr,
+        f.loan_annuity_idr,
+
+        -- FIX: Risk Metrics dari int_credit_profile (via fct)
+        f.debt_to_income_ratio,
+        f.total_previous_loans,
+        f.total_bureau_debt_idr,
+
+        -- Demographic Attributes dari dim_clients
         c.gender,
         c.owns_car,
         c.owns_realty,
