@@ -1,18 +1,13 @@
 {{ config(materialized='table') }}
 
 WITH staging_loans AS (
-    -- Kita ambil sumbernya dari staging yang udah bersih
     SELECT * FROM {{ ref('stg_loans') }}
 ),
 
 dim_clients AS (
-    -- Pake DISTINCT biar 1 nasabah cuma punya 1 baris biodata (nggak duplikat)
-    SELECT DISTINCT
-        application_id AS client_id, -- Ini jadi Primary Key buat buku biodata ini
-        
-        -- DI BAWAH INI ADALAH "KATA SIFAT" (Demografi Profil)
-        -- Memanggil nama yang sudah diubah di stg_loans
-        gender, 
+    SELECT
+        application_id AS client_id,
+        gender,
         has_car_flag AS owns_car,
         has_realty_flag AS owns_realty,
         total_children,
@@ -20,14 +15,12 @@ dim_clients AS (
         education_type AS education_level,
         family_status,
         housing_type,
-        
-        -- Kita ubah umur yang minus ribuan hari jadi umur beneran
+        -- Aman dari anomali 365243 karena sudah di-handle di stg_loans
         CAST(ABS(days_birth) / 365 AS INT64) AS age_years,
-        
-        -- Kita ubah lama kerja jadi tahun juga
         CAST(ABS(days_employed) / 365 AS INT64) AS years_employed
-
     FROM staging_loans
+    -- FIX: QUALIFY lebih andal dari DISTINCT untuk deduplikasi PK
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY application_id ORDER BY application_id) = 1
 )
 
 SELECT * FROM dim_clients
