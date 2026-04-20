@@ -1,19 +1,35 @@
 version: 2
 
 models:
-  - name: obt_credit_risk
-    description: "Tabel master One Big Table untuk dashboard Credit Risk"
+  - name: fct_loan_applications
+    description: "Fact table berisi transaksi pengajuan kredit beserta metrik risiko"
     columns:
       - name: application_id
-        description: "Primary key / Nomor Struk Transaksi"
+        description: "Primary key unik per pengajuan"
         tests:
           - unique
           - not_null
 
+  - name: dim_clients
+    description: "Dimension table berisi profil demografi nasabah"
+    columns:
+      - name: client_id
+        description: "Primary key unik per nasabah"
+        tests:
+          - unique
+          - not_null
+
+  - name: obt_credit_risk
+    description: "One Big Table untuk dashboard Credit Risk di Looker Studio"
+    columns:
+      - name: application_id
+        description: "Primary key unik per pengajuan kredit"
+        tests:
+          - unique
+          - not_null
       - name: is_default
         description: "Target variabel. 0 = Lancar, 1 = Macet"
         tests:
           - accepted_values:
-              arguments:
-                values: [0, 1]
-                quote: false
+              values: [0, 1]
+              quote: false
