@@ -83,20 +83,20 @@ jobs:
       # ------------------------------------------------------------------
       # IMPROVEMENT: Cek kesegaran data source sebelum run (penting untuk fintech)
       - name: Cek freshness data source
-        run: dbt source freshness --project-dir . --profiles-dir ~/.dbt
+        run: dbt source freshness --project-dir . --profiles-dir ~/.dbt --vars 'gcp_project_id: "${{ secrets.GCP_PROJECT_ID }}"'
         continue-on-error: true  # Jangan gagalkan seluruh pipeline jika stale
 
       # ------------------------------------------------------------------
       # 2. CONTINUOUS INTEGRATION (CI)
       # FIX WARNING #3: dbt run dijalankan SEBELUM dbt test
       - name: Jalankan dbt Run (CD)
-        run: dbt run --project-dir . --profiles-dir ~/.dbt
+        run: dbt run --project-dir . --profiles-dir ~/.dbt --vars 'gcp_project_id: "${{ secrets.GCP_PROJECT_ID }}"'
 
       # ------------------------------------------------------------------
       # 3. CONTINUOUS DEPLOYMENT (CD)
       # Test dijalankan SETELAH run, menguji data yang baru di-build
       - name: Jalankan dbt Test (CI)
-        run: dbt test --project-dir . --profiles-dir ~/.dbt
+        run: dbt test --project-dir . --profiles-dir ~/.dbt --vars 'gcp_project_id: "${{ secrets.GCP_PROJECT_ID }}"'
 
       # ------------------------------------------------------------------
       # IMPROVEMENT: Generate dokumentasi (opsional, bisa di-comment out)

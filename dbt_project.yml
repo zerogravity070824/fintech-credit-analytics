@@ -16,7 +16,7 @@ clean-targets:
 
 # Variabel project — override via CLI: dbt run --vars '{gcp_project_id: my-project}'
 vars:
-  gcp_project_id: "your-gcp-project-id"
+  gcp_project_id: "potent-catwalk-484317-n0"
 
 # Materialization strategy per layer
 models:
