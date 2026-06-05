@@ -1,5 +1,7 @@
 # Fintech Credit Analytics: Scalable Data Pipeline for Loan Risk Monitoring
 
+![dbt CI/CD](https://github.com/zerogravity070824/fintech-credit-analytics/actions/workflows/dbt_run.yml/badge.svg)
+
 ![dbt](https://img.shields.io/badge/dbt-1.8.2-orange?logo=dbt)
 ![BigQuery](https://img.shields.io/badge/BigQuery-Google_Cloud-4285F4?logo=google-cloud)
 ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python)
@@ -30,6 +32,13 @@ Tim Risk Analyst memerlukan visibilitas harian terhadap performa portofolio kred
 
 ![Data Architecture](arsitektur.png)
 *Star schema dengan tiga layer: Staging → Intermediate → Marts*
+
+---
+
+## Results & Impact
+- **Automation:** Reduced manual query time from ~2 hours/day to fully automated refresh
+- **Data Quality:** 6 automated test layers catch anomalies before they reach dashboard
+- **Scalability:** Pipeline handles 30,000+ loan applications with daily incremental refresh
 
 ---
 
