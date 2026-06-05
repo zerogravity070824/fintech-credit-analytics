@@ -11,6 +11,22 @@
 {% endmacro %}
 
 
+{% macro safe_divide(numerator, denominator) %}
+    {#
+        Performs a safe division and returns NULL when denominator is zero.
+        Uses BigQuery SAFE_DIVIDE for BigQuery compatibility and a portable
+        CASE expression for other adapters.
+    #}
+    {% if target.type == 'duckdb' %}
+        CASE
+            WHEN {{ denominator }} = 0 THEN NULL
+            ELSE {{ numerator }} / {{ denominator }}
+        END
+    {% else %}
+        SAFE_DIVIDE({{ numerator }}, {{ denominator }})
+    {% endif %}
+{% endmacro %}
+
 {% macro safe_divide_pct(numerator, denominator, decimal_places=2) %}
     {#
         Performs a safe division and returns the result as a percentage.
@@ -19,5 +35,5 @@
         Usage:
             {{ safe_divide_pct('loan_annuity_idr', 'total_income_idr') }}
     #}
-    ROUND(SAFE_DIVIDE({{ numerator }}, {{ denominator }}) * 100, {{ decimal_places }})
+    ROUND({{ safe_divide(numerator, denominator) }} * 100, {{ decimal_places }})
 {% endmacro %}

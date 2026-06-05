@@ -22,8 +22,13 @@ renamed_and_casted AS (
 )
 
 -- Menggunakan QUALIFY untuk deduplikasi yang jauh lebih efisien di BigQuery
-SELECT * FROM renamed_and_casted
-QUALIFY ROW_NUMBER() OVER(
-    PARTITION BY bureau_id 
-    ORDER BY days_credit_before_application DESC -- Mengambil data paling update jika ada duplikat
-) = 1
+SELECT * FROM (
+    SELECT
+        *,
+        ROW_NUMBER() OVER(
+            PARTITION BY bureau_id
+            ORDER BY days_credit_before_application DESC
+        ) AS row_num
+    FROM renamed_and_casted
+)
+WHERE row_num = 1

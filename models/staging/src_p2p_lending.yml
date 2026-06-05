@@ -3,7 +3,6 @@ version: 2
 sources:
   - name: home_credit_raw
     description: "Raw layer dari Kaggle Home Credit Default Risk dataset."
-    database: "{{ var('gcp_project_id') }}"
     schema: raw_layer
     config:
       tags: ['home_credit', 'raw']

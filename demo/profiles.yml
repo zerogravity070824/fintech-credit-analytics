@@ -1,0 +1,9 @@
+fintech_credit_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: demo/demo.duckdb
+      database: demo
+      schema: raw_layer
+      threads: 1

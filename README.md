@@ -130,6 +130,8 @@ This project implements multiple layers of data validation:
 
 ### 1. Clone & Install Dependencies
 
+> NOTE: This repository does not include service account keys or other credentials. Store secrets securely and configure your `~/.dbt/profiles.yml` or GitHub Secrets before running.
+
 ```bash
 git clone https://github.com/zerogravity070824/fintech-credit-analytics.git
 cd fintech-credit-analytics
@@ -168,6 +170,28 @@ dbt debug
 ```
 
 All checks should return `OK` before proceeding.
+
+### 4a. Run Local Demo with DuckDB
+
+If you want to run a minimal local demo without full BigQuery access, use the included DuckDB demo profile and sample seeds.
+
+```bash
+./run_demo.sh
+```
+
+On Windows PowerShell:
+
+```powershell
+./run_demo.ps1
+```
+
+This demo will:
+- install Python dependencies and dbt adapters
+- load sample `demo_application_train` and `demo_bureau` seeds
+- run staging models locally
+- execute dbt tests on the staging layer
+
+The local demo uses `demo/profiles.yml` and a DuckDB database file at `demo/demo.duckdb`.
 
 ### 5. Run the Pipeline
 

@@ -18,9 +18,13 @@ dim_clients AS (
         -- Aman dari anomali 365243 karena sudah di-handle di stg_loans
         CAST(ABS(days_birth) / 365 AS INT64) AS age_years,
         CAST(ABS(days_employed) / 365 AS INT64) AS years_employed
-    FROM staging_loans
-    -- FIX: QUALIFY lebih andal dari DISTINCT untuk deduplikasi PK
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY application_id ORDER BY application_id) = 1
+    FROM (
+        SELECT
+            *,
+            ROW_NUMBER() OVER (PARTITION BY application_id ORDER BY application_id) AS row_num
+        FROM staging_loans
+    )
+    WHERE row_num = 1
 )
 
 SELECT * FROM dim_clients

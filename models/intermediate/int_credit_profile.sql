@@ -29,14 +29,19 @@ joined_and_calculated AS (
         COALESCE(b.total_bureau_debt_idr, 0)  AS total_bureau_debt_idr,
 
         -- FIX: Dibagi pendapatan bulanan (tahunan / 12) agar DTI akurat
-        SAFE_DIVIDE(l.loan_annuity_idr, l.total_income_idr / 12) AS debt_to_income_ratio
+        {{ safe_divide('l.loan_annuity_idr', 'l.total_income_idr / 12') }} AS debt_to_income_ratio
 
     FROM loans l
     LEFT JOIN bureau_summary b
         ON l.application_id = b.application_id
+),
 
-    -- FIX: Safety net deduplikasi
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY l.application_id ORDER BY l.application_id) = 1
+joined_and_deduped AS (
+    SELECT * FROM (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY application_id ORDER BY application_id) AS row_num
+        FROM joined_and_calculated
+    )
+    WHERE row_num = 1
 )
 
-SELECT * FROM joined_and_calculated
+SELECT * FROM joined_and_deduped

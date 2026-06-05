@@ -16,7 +16,15 @@ clean-targets:
 
 # Variabel project — override via CLI: dbt run --vars '{gcp_project_id: my-project}'
 vars:
-  gcp_project_id: "potent-catwalk-484317-n0"
+  gcp_project_id: "your-gcp-project-id"
+
+# Seed aliases for local demo
+seeds:
+  fintech_credit_analytics:
+    demo_application_train:
+      +alias: application_train
+    demo_bureau:
+      +alias: bureau
 
 # Materialization strategy per layer
 models:
@@ -26,4 +34,4 @@ models:
     intermediate:
       +materialized: table
     marts:
-      +materialized: table
+      +materialized: table
