@@ -193,6 +193,8 @@ This demo will:
 
 The local demo uses `demo/profiles.yml` and a DuckDB database file at `demo/demo.duckdb`.
 
+Resume-ready note: there's a quick local DuckDB demo included — run `./run_demo.sh` (Linux/macOS) or `./run_demo.ps1` (Windows) to load sample seeds, run staging models, and execute dbt tests; great for reviewers and portfolio demos.
+
 ### 5. Run the Pipeline
 
 ```bash
