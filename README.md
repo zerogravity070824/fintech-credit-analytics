@@ -64,9 +64,12 @@ Risk Analysts need daily visibility into credit portfolio performance. This pipe
 ---
 
 ## Results & Impact
-- **Automation:** Reduced manual query time from ~2 hours/day to fully automated refresh
-- **Data Quality:** 6 automated test layers catch anomalies before they reach dashboard
-- **Scalability:** Pipeline handles 30,000+ loan applications with daily incremental refresh
+- **Processed:** 30,000+ loan applications (sample dataset / production-scale runs).
+- **Pipeline cadence:** Daily scheduled refresh via GitHub Actions (cron + manual `workflow_dispatch`).
+- **Typical runtime (observed range):** End-to-end dbt run + tests on BigQuery: ~10–30 minutes depending on BigQuery slots, dataset size, and concurrency. Local DuckDB demo: ~2–5 minutes.
+- **Automated tests:** ~26 automated validation tests (schema tests, referential integrity, accepted values, range checks, and custom business-rule tests) defined across staging and marts.
+- **Test coverage:** Tests exercise primary keys and critical metrics across the core models (staging, intermediate, and marts — ~6 core models). These tests validate PK/uniqueness, not-null constraints, accepted value domains, and key metric ranges.
+- **Business impact:** Automated daily refresh and testing eliminate repetitive ad-hoc queries and ensure dashboards reflect fresh, validated data for daily risk monitoring.
 
 ---
 
@@ -163,7 +166,7 @@ This project implements multiple layers of data validation:
 |---|---|---|
 | **Schema Tests** | Primary key uniqueness & not-null | `application_id` is unique and not null |
 | **Referential Integrity** | Foreign key relationship validation | `bureau.SK_ID_CURR` → `application_train.SK_ID_CURR` |
-| **Accepted Values** | Enum / domain value checks | `is_default` must be 0 or 1 |
+| **Accepted Values** | Enum / domain value checks | `is_default` must be 0 and 1 |
 | **Custom Singular Test** | Business-rule assertions | Loan amount must be > 0 |
 | **dbt_utils** | Range checks, expression validation | DTI ratio within expected range |
 | **Source Freshness** | Ensures raw data is up-to-date | Checked before each pipeline run |
