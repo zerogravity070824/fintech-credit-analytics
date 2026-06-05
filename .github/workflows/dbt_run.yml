@@ -55,7 +55,7 @@ jobs:
         run: |
           mkdir -p ~/.dbt
           cat > ~/.dbt/profiles.yml << 'EOF'
-          my_first_project:
+          fintech_credit_analytics:
             target: dev
             outputs:
               dev:

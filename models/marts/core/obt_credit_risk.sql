@@ -1,4 +1,4 @@
-{{ config(materialized='table') }}
+
 
 WITH fact_loans AS (
     SELECT * FROM {{ ref('fct_loan_applications') }}

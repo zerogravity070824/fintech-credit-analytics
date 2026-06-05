@@ -1,4 +1,4 @@
-{{ config(materialized='table') }}
+-- Materialization: table (dikonfigurasi di dbt_project.yml)
 
 WITH loans AS (
     SELECT
