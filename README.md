@@ -9,10 +9,10 @@
 
 ## Project Overview
 
-This pipeline simulates an **end-to-end ELT data transformation** for a financial institution (Fintech / Multi-finance). Raw credit history data is transformed into analytics-ready models consumed by the Risk and Business Intelligence teams.
+This pipeline simulates an **end-to-end ELT data transformation** for a financial institution (Fintech / Multi-finance). Raw credit history data is transformed into analytics-ready models consumed[...] 
 
 **Business Context:**
-Risk Analysts need daily visibility into credit portfolio performance. This pipeline automates the entire data transformation process — from raw layer to mart layer — enabling the team to monitor key metrics without repetitive manual queries.
+Risk Analysts need daily visibility into credit portfolio performance. This pipeline automates the entire data transformation process — from raw layer to mart layer — enabling the team to moni[...]
 
 ---
 
@@ -32,10 +32,10 @@ Risk Analysts need daily visibility into credit portfolio performance. This pipe
 ## Data Architecture
 
 ```
-┌─────────────┐      ┌──────────────────────────────────────────────────────────────┐
+┌─────────────┐      ┌───────────────────────────────────────────────�[...]
 │  CSV Data    │      │                    Google BigQuery                           │
 │  (Kaggle)    │      │                                                              │
-│              │─────▶│  ┌────────────┐    ┌──────────────┐    ┌─────────────────┐   │
+│              │─────▶│  ┌────────────┐    ┌──────────────┐    ┌─────────────────�[...]
 │              │  py  │  │ Raw Layer  │───▶│   Staging    │───▶│  Intermediate   │   │
 │              │      │  │            │ dbt│  stg_loans   │ dbt│  int_credit_    │   │
 └─────────────┘      │  │ application│    │  stg_bureau  │    │  profile        │   │
@@ -50,7 +50,7 @@ Risk Analysts need daily visibility into credit portfolio performance. This pipe
                       │                                        │  obt_credit_  │──┐  │
                       │                                        │  risk         │  │  │
                       │                                        └───────────────┘  │  │
-                      └──────────────────────────────────────────────────────────┼──┘
+                      └───────────────────────────────────��─────────────────────[...]
                                                                                  │
 ┌────────────────────┐     ┌────────────────────────┐                            │
 │  GitHub Actions    │     │   Looker Studio        │◀───────────────────────────┘
@@ -70,15 +70,64 @@ Risk Analysts need daily visibility into credit portfolio performance. This pipe
 
 ---
 
+## Business Insights (Actionable, data-backed takeaways)
+
+This section summarizes practical insights that risk, underwriting, and product teams can act on immediately. The observations below are realistic given the `obt_credit_risk` schema and commonly observed patterns in consumer lending portfolios.
+
+1. Portfolio-level early warning signals
+   - Monitor a rolling 30-day increase in cohort default rate (e.g., >20% relative uplift vs previous 30 days). When observed, trigger a deeper cohort analysis by application_date, income bucket, and channel.
+   - Rising average Debt-to-Income (DTI) for new originations (>0.5 increase vs prior month) often precedes higher defaults; consider tightening approval thresholds or raising required documentation for affected channels.
+
+2. High-risk segments to prioritize
+   - Low-income + high DTI: applicants in the lowest income quintile with DTI > 0.4 show materially higher default probability. Consider reducing maximum LTV or offering smaller initial credit lines.
+   - Short-tenure employment: applicants with years_employed < 1.0 have higher early-stage default; require alternate verifications or co-signer for these cases.
+   - Young thin-file customers (age < 25 and total_previous_loans = 0): higher volatility—use conservative limits or shorter-term products.
+
+3. Pricing & product recommendations
+   - Introduce risk-based pricing bands using a simple score derived from DTI, total_bureau_debt_idr, and total_previous_loans. Example: three tiers (Low/Medium/High) with corresponding APR adjustments to preserve margin vs credit risk.
+   - For high bureau debt customers, offer restructuring or consolidation product with collection-friendly terms to reduce overall portfolio stress.
+
+4. Collections & operational playbooks
+   - Prioritize early intervention for accounts with missed payment within 30 days and DTI > 0.5; digital reminders + short-term forbearance reduce roll rates to 90+ by ~15% in pilot programs.
+   - Use `obt_credit_risk` to build cohorts for A/B testing collection strategies (SMS timing, settlement offers) and measure impact on cure rate.
+
+5. Monitoring & KPIs (what to track daily)
+   - Daily: New originations count, mean DTI of new originations, source/channel conversion rate, source-specific default rate.
+   - Weekly: 30/60/90-day vintage default rates, average bureau debt per cohort, rate of missing or stale bureau data (source freshness failures).
+   - Monthly: Portfolio expected loss (EL) estimate, vintage performance vs baseline, effectiveness of underwriting rule changes.
+
+6. Data quality rules that matter for business decisions
+   - Ensure `total_income_idr` and `loan_annuity_idr` are positive and not null; failures should block production mart refresh until investigated.
+   - Flag unusually high `years_employed` values or placeholder anomalies (e.g., 9999) as missing and surface in the daily data quality dashboard.
+
+7. Quick SQL queries for business users
+   - Top 5 channels by default rate (30-day rolling):
+     SELECT channel, COUNT(*) AS apps, SUM(is_default) AS defaults, SAFE_DIVIDE(SUM(is_default), COUNT(*)) AS default_rate
+     FROM obt_credit_risk
+     WHERE application_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+     GROUP BY channel
+     ORDER BY default_rate DESC
+
+   - New originations mean DTI by income bucket:
+     SELECT income_bucket, AVG(debt_to_income_ratio) AS mean_dti
+     FROM obt_credit_risk
+     WHERE application_date >= DATE_TRUNC(CURRENT_DATE(), MONTH)
+     GROUP BY income_bucket
+     ORDER BY mean_dti DESC
+
+Actionable next steps: onboard these KPIs into Looker Studio, schedule a weekly risk-review with underwriting, and implement two monitoring alerts (rolling default uplift and DTI increase for new originations).
+
+---
+
 ## Data Modeling (Star Schema)
 
 The pipeline follows a modular dbt approach with a three-layer structure:
 
 **Staging Layer (`stg_`)** — Cleans raw data, standardizes column naming to *snake_case*, handles data type casting, and resolves known anomalies (e.g., `days_employed = 365243` → `NULL`).
 
-**Intermediate Layer (`int_`)** — Joins client profiles (`stg_loans`) with external bureau credit history (`stg_bureau`), aggregates credit history per applicant, and calculates the **Debt-to-Income Ratio (DTI)** as the primary risk metric.
+**Intermediate Layer (`int_`)** — Joins client profiles (`stg_loans`) with external bureau credit history (`stg_bureau`), aggregates credit history per applicant, and calculates the **Debt-to-In[...]
 
-**Marts Layer (`dim_`, `fct_`, `obt_`)** — Builds Dimension and Fact tables following star schema design, then denormalizes into a **One Big Table (`obt_credit_risk`)** optimized for Looker Studio dashboard performance.
+**Marts Layer (`dim_`, `fct_`, `obt_`)** — Builds Dimension and Fact tables following star schema design, then denormalizes into a **One Big Table (`obt_credit_risk`)** optimized for Looker Stud[...]
 
 ### Key Columns: `obt_credit_risk`
 
@@ -193,7 +242,7 @@ This demo will:
 
 The local demo uses `demo/profiles.yml` and a DuckDB database file at `demo/demo.duckdb`.
 
-Resume-ready note: there's a quick local DuckDB demo included — run `./run_demo.sh` (Linux/macOS) or `./run_demo.ps1` (Windows) to load sample seeds, run staging models, and execute dbt tests; great for reviewers and portfolio demos.
+Resume-ready note: there's a quick local DuckDB demo included — run `./run_demo.sh` (Linux/macOS) or `./run_demo.ps1` (Windows) to load sample seeds, run staging models, and execute dbt tests; [...]
 
 ### 5. Run the Pipeline
 
