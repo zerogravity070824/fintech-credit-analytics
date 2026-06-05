@@ -7,6 +7,36 @@
 ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python)
 ![CI/CD](https://github.com/zerogravity070824/fintech-credit-analytics/actions/workflows/dbt_run.yml/badge.svg)
 
+## Try it in 2 minutes (no GCP needed)
+
+This repository includes a lightweight local demo that runs the staging layer and dbt tests using DuckDB. It is perfect for quick validation, local development, or showcasing the pipeline without any Google Cloud credentials.
+
+Estimated runtime: ~2–5 minutes on a typical developer laptop.
+
+Quick start:
+
+```bash
+# Clone repository
+git clone https://github.com/zerogravity070824/fintech-credit-analytics.git
+cd fintech-credit-analytics
+
+# Run the demo (Linux / macOS)
+./run_demo.sh
+
+# On Windows PowerShell
+./run_demo.ps1
+```
+
+What the demo does:
+- Creates a Python virtual environment (`.venv_demo`) and installs dependencies from `requirements.txt`.
+- Uses the `dbt-duckdb` adapter and loads sample seeds from `seeds/demo_application_train.csv` and `seeds/demo_bureau.csv`.
+- Builds the staging models locally and runs dbt tests on the staging layer.
+- Stores the demo database at `demo/demo.duckdb`.
+
+This allows you to explore the transformations, tests, and model logic without setting up a BigQuery profile or GCP service account.
+
+---
+
 ## Project Overview
 
 This pipeline simulates an **end-to-end ELT data transformation** for a financial institution (Fintech / Multi-finance). Raw credit history data is transformed into analytics-ready models consumed[...] 
