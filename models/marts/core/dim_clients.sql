@@ -1,4 +1,4 @@
-{{ config(materialized='table') }}
+
 
 WITH staging_loans AS (
     SELECT * FROM {{ ref('stg_loans') }}

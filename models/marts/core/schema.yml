@@ -2,34 +2,70 @@ version: 2
 
 models:
   - name: fct_loan_applications
-    description: "Fact table berisi transaksi pengajuan kredit beserta metrik risiko"
+    description: "Fact table containing loan application transactions with risk metrics."
     columns:
       - name: application_id
-        description: "Primary key unik per pengajuan"
+        description: "Unique primary key per loan application."
         tests:
           - unique
           - not_null
+      - name: loan_amount_idr
+        description: "Requested loan amount in IDR."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+      - name: debt_to_income_ratio
+        description: "Monthly installment divided by monthly income. Values > 1 indicate high risk."
+        tests:
+          - dbt_utils.accepted_range:
+              config:
+                severity: warn
+              arguments:
+                min_value: 0
+                max_value: 100
 
   - name: dim_clients
-    description: "Dimension table berisi profil demografi nasabah"
+    description: "Dimension table containing client demographic profiles."
     columns:
       - name: client_id
-        description: "Primary key unik per nasabah"
+        description: "Unique primary key per client."
         tests:
           - unique
           - not_null
+      - name: age_years
+        description: "Client age in years, derived from days_birth."
+        tests:
+          - dbt_utils.accepted_range:
+              config:
+                severity: warn
+              arguments:
+                min_value: 18
+                max_value: 100
 
   - name: obt_credit_risk
-    description: "One Big Table untuk dashboard Credit Risk di Looker Studio"
+    description: "One Big Table (denormalized) for Credit Risk dashboard in Looker Studio."
     columns:
       - name: application_id
-        description: "Primary key unik per pengajuan kredit"
+        description: "Unique primary key per loan application."
         tests:
           - unique
           - not_null
       - name: is_default
-        description: "Target variabel. 0 = Lancar, 1 = Macet"
+        description: "Target variable. 0 = Performing, 1 = Default."
         tests:
           - accepted_values:
-              values: [0, 1]
-              quote: false
+              arguments:
+                values: [0, 1]
+                quote: false
+      - name: total_income_idr
+        description: "Total annual applicant income in IDR."
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              config:
+                severity: warn
+              arguments:
+                expression: "> 0"

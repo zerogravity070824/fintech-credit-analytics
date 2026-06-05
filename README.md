@@ -9,29 +9,57 @@
 
 ## Project Overview
 
-Pipeline ini mensimulasikan *end-to-end data transformation* untuk institusi finansial (Fintech/Multi-finance). Raw data riwayat kredit diproses menjadi model analitik yang siap dikonsumsi oleh tim Risk dan Business Intelligence.
+This pipeline simulates an **end-to-end ELT data transformation** for a financial institution (Fintech / Multi-finance). Raw credit history data is transformed into analytics-ready models consumed by the Risk and Business Intelligence teams.
 
 **Business Context:**
-Tim Risk Analyst memerlukan visibilitas harian terhadap performa portofolio kredit. Pipeline ini mengotomasi seluruh proses transformasi data — dari raw layer hingga mart layer — sehingga tim dapat memantau metrik utama tanpa query manual yang berulang.
+Risk Analysts need daily visibility into credit portfolio performance. This pipeline automates the entire data transformation process — from raw layer to mart layer — enabling the team to monitor key metrics without repetitive manual queries.
 
 ---
 
 ## Tech Stack
 
-| Layer | Tool | Versi |
+| Layer | Tool | Version |
 |---|---|---|
-| Cloud Data Warehouse | Google BigQuery | - |
+| Cloud Data Warehouse | Google BigQuery | — |
 | Data Transformation | dbt Core + dbt-bigquery | 1.8.2 |
-| Orchestration & CI/CD | GitHub Actions | - |
-| Visualization | Looker Studio | - |
+| Data Quality | dbt tests + dbt_utils + dbt_expectations | — |
+| Orchestration & CI/CD | GitHub Actions | — |
+| Visualization | Looker Studio | — |
 | Language | SQL, YAML, Python | Python 3.10 |
 
 ---
 
 ## Data Architecture
 
-![Data Architecture](arsitektur.png)
-*Star schema dengan tiga layer: Staging → Intermediate → Marts*
+```
+┌─────────────┐      ┌──────────────────────────────────────────────────────────────┐
+│  CSV Data    │      │                    Google BigQuery                           │
+│  (Kaggle)    │      │                                                              │
+│              │─────▶│  ┌────────────┐    ┌──────────────┐    ┌─────────────────┐   │
+│              │  py  │  │ Raw Layer  │───▶│   Staging    │───▶│  Intermediate   │   │
+│              │      │  │            │ dbt│  stg_loans   │ dbt│  int_credit_    │   │
+└─────────────┘      │  │ application│    │  stg_bureau  │    │  profile        │   │
+                      │  │ _train     │    └──────────────┘    └────────┬────────┘   │
+                      │  │ bureau     │                                 │             │
+                      │  └────────────┘                                 ▼             │
+                      │                                        ┌───────────────┐     │
+                      │                                        │    Marts      │     │
+                      │                                        │  dim_clients  │     │
+                      │                                        │  fct_loan_    │     │
+                      │                                        │  applications │     │
+                      │                                        │  obt_credit_  │──┐  │
+                      │                                        │  risk         │  │  │
+                      │                                        └───────────────┘  │  │
+                      └──────────────────────────────────────────────────────────┼──┘
+                                                                                 │
+┌────────────────────┐     ┌────────────────────────┐                            │
+│  GitHub Actions    │     │   Looker Studio        │◀───────────────────────────┘
+│  CI/CD Pipeline    │     │   Dashboard            │
+│  ─ dbt run (daily) │     │   ─ Default Rate       │
+│  ─ dbt test        │     │   ─ DTI Distribution   │
+│  ─ source freshness│     │   ─ Portfolio Analysis  │
+└────────────────────┘     └────────────────────────┘
+```
 
 ---
 
@@ -44,38 +72,52 @@ Tim Risk Analyst memerlukan visibilitas harian terhadap performa portofolio kred
 
 ## Data Modeling (Star Schema)
 
-Pipeline mengadopsi pendekatan modular dbt dengan struktur tiga layer:
+The pipeline follows a modular dbt approach with a three-layer structure:
 
-**Staging Layer (`stg_`)** — Membersihkan data mentah, standarisasi penamaan kolom ke *snake_case*, dan penyesuaian tipe data.
+**Staging Layer (`stg_`)** — Cleans raw data, standardizes column naming to *snake_case*, handles data type casting, and resolves known anomalies (e.g., `days_employed = 365243` → `NULL`).
 
-**Intermediate Layer (`int_`)** — JOIN antara profil nasabah (`stg_loans`) dengan riwayat BI Checking (`stg_bureau`), agregasi histori kredit per nasabah, serta kalkulasi **Debt-to-Income Ratio (DTI)** sebagai metrik risiko utama.
+**Intermediate Layer (`int_`)** — Joins client profiles (`stg_loans`) with external bureau credit history (`stg_bureau`), aggregates credit history per applicant, and calculates the **Debt-to-Income Ratio (DTI)** as the primary risk metric.
 
-**Marts Layer (`dim_`, `fct_`, `obt_`)** — Membangun Dimension dan Fact tables, lalu didenormalisasi menjadi **One Big Table (`obt_credit_risk`)** yang dioptimalkan untuk performa dashboard Looker Studio.
+**Marts Layer (`dim_`, `fct_`, `obt_`)** — Builds Dimension and Fact tables following star schema design, then denormalizes into a **One Big Table (`obt_credit_risk`)** optimized for Looker Studio dashboard performance.
 
-### Skema Kolom Utama: `obt_credit_risk`
+### Key Columns: `obt_credit_risk`
 
-| Kolom | Tipe | Deskripsi |
+| Column | Type | Description |
 |---|---|---|
-| `application_id` | STRING | Primary key unik per pengajuan kredit |
-| `client_id` | STRING | Foreign key ke dim_clients |
-| `is_default` | INT64 | Label default: 0 = Lancar, 1 = Macet |
-| `contract_type` | STRING | Jenis kontrak pinjaman |
-| `total_income_idr` | NUMERIC | Total pendapatan nasabah |
-| `loan_amount_idr` | NUMERIC | Jumlah pinjaman yang diajukan |
-| `loan_annuity_idr` | NUMERIC | Cicilan bulanan pinjaman |
-| `debt_to_income_ratio` | FLOAT64 | Rasio cicilan terhadap pendapatan (DTI) |
-| `total_previous_loans` | INT64 | Jumlah histori kredit di bank lain |
-| `total_bureau_debt_idr` | NUMERIC | Total outstanding hutang di bank lain |
-| `gender` | STRING | Jenis kelamin nasabah |
-| `owns_car` | STRING | Kepemilikan kendaraan |
-| `owns_realty` | STRING | Kepemilikan properti |
-| `total_children` | INT64 | Jumlah tanggungan anak |
-| `income_type` | STRING | Jenis penghasilan nasabah |
-| `education_level` | STRING | Tingkat pendidikan nasabah |
-| `family_status` | STRING | Status pernikahan nasabah |
-| `housing_type` | STRING | Jenis tempat tinggal nasabah |
-| `age_years` | INT64 | Umur nasabah dalam tahun |
-| `years_employed` | INT64 | Lama bekerja dalam tahun |
+| `application_id` | STRING | Unique primary key per loan application |
+| `is_default` | INT64 | Default label: 0 = Performing, 1 = Default |
+| `contract_type` | STRING | Loan contract type |
+| `total_income_idr` | NUMERIC | Total applicant income |
+| `loan_amount_idr` | NUMERIC | Requested loan amount |
+| `loan_annuity_idr` | NUMERIC | Monthly loan installment |
+| `debt_to_income_ratio` | FLOAT64 | Installment-to-income ratio (DTI) |
+| `total_previous_loans` | INT64 | Number of previous credit records in other banks |
+| `total_bureau_debt_idr` | NUMERIC | Total outstanding debt in other banks |
+| `gender` | STRING | Applicant gender |
+| `owns_car` | STRING | Car ownership flag |
+| `owns_realty` | STRING | Real estate ownership flag |
+| `total_children` | INT64 | Number of dependent children |
+| `income_type` | STRING | Employment income type |
+| `education_level` | STRING | Education level |
+| `family_status` | STRING | Marital status |
+| `housing_type` | STRING | Housing type |
+| `age_years` | INT64 | Applicant age in years |
+| `years_employed` | INT64 | Years of employment |
+
+---
+
+## Data Quality & Testing
+
+This project implements multiple layers of data validation:
+
+| Test Type | Description | Example |
+|---|---|---|
+| **Schema Tests** | Primary key uniqueness & not-null | `application_id` is unique and not null |
+| **Referential Integrity** | Foreign key relationship validation | `bureau.SK_ID_CURR` → `application_train.SK_ID_CURR` |
+| **Accepted Values** | Enum / domain value checks | `is_default` must be 0 or 1 |
+| **Custom Singular Test** | Business-rule assertions | Loan amount must be > 0 |
+| **dbt_utils** | Range checks, expression validation | DTI ratio within expected range |
+| **Source Freshness** | Ensures raw data is up-to-date | Checked before each pipeline run |
 
 ---
 
@@ -84,14 +126,14 @@ Pipeline mengadopsi pendekatan modular dbt dengan struktur tiga layer:
 ### Prerequisites
 - Python 3.10+
 - Google Cloud SDK
-- Service Account dengan akses BigQuery Editor & BigQuery Job User
+- Service Account with BigQuery Editor & BigQuery Job User roles
 
 ### 1. Clone & Install Dependencies
 
 ```bash
 git clone https://github.com/zerogravity070824/fintech-credit-analytics.git
 cd fintech-credit-analytics
-pip install dbt-bigquery==1.8.2
+pip install -r requirements.txt
 ```
 
 ### 2. Install dbt Packages
@@ -102,10 +144,10 @@ dbt deps
 
 ### 3. Setup `profiles.yml`
 
-File ini **tidak di-commit ke repo** (sudah ada di `.gitignore`). Buat manual di `~/.dbt/profiles.yml`:
+This file is **not committed** to the repository (listed in `.gitignore`). Create it manually at `~/.dbt/profiles.yml`:
 
 ```yaml
-my_first_project:
+fintech_credit_analytics:
   target: dev
   outputs:
     dev:
@@ -119,75 +161,79 @@ my_first_project:
       timeout_seconds: 300
 ```
 
-### 4. Verifikasi Koneksi
+### 4. Verify Connection
 
 ```bash
 dbt debug
 ```
 
-Semua check harus `OK` sebelum lanjut.
+All checks should return `OK` before proceeding.
 
-### 5. Jalankan Pipeline
+### 5. Run the Pipeline
 
 ```bash
-# Cek kesegaran data sumber
+# Check source data freshness
 dbt source freshness
 
-# Jalankan semua model
+# Run all models
 dbt run
 
-# Validasi kualitas data
+# Validate data quality
 dbt test
 ```
 
-### 6. Jalankan Model Spesifik (Opsional)
+### 6. Run Specific Models (Optional)
 
 ```bash
-# Hanya layer staging
+# Staging layer only
 dbt run --select staging
 
-# Hanya model tertentu beserta dependensinya
+# Specific model with all upstream dependencies
 dbt run --select +obt_credit_risk
+
+# Generate documentation
+dbt docs generate
+dbt docs serve
 ```
 
 ---
 
 ## CI/CD Pipeline
 
-Pipeline dijalankan via **GitHub Actions** dengan tiga mekanisme trigger:
+The pipeline is executed via **GitHub Actions** with three trigger mechanisms:
 
-- **On push ke `main`** — dijalankan otomatis setiap ada perubahan kode
-- **Scheduled cron (06:00 WITA)** — batch harian untuk memastikan data selalu fresh
-- **Manual `workflow_dispatch`** — untuk kebutuhan on-demand run
+- **On push to `main`** — runs automatically on every code change
+- **Scheduled cron (06:00 WITA / 22:00 UTC)** — daily batch to ensure data freshness
+- **Manual `workflow_dispatch`** — for on-demand runs
 
-**Urutan eksekusi:**
+**Execution order:**
 
-1. Autentikasi ke Google Cloud menggunakan Service Account yang disimpan di GitHub Secrets
+1. Authenticate to Google Cloud using a Service Account stored in GitHub Secrets
 2. `dbt deps` — install dbt packages
-3. `dbt source freshness` — validasi kesegaran data sumber sebelum transformasi
-4. `dbt run` — eksekusi model dan update tabel di BigQuery **(CD)**
-5. `dbt test` — validasi kualitas data: tidak ada null pada Primary Key, tidak ada duplikat, dan pengecekan anomali lainnya **(CI)**
+3. `dbt source freshness` — validate source data freshness before transformation
+4. `dbt run` — execute models and update BigQuery tables **(CD)**
+5. `dbt test` — validate data quality: no nulls on PKs, no duplicates, anomaly checks **(CI)**
 
-Dependency caching Python diaktifkan untuk mempercepat build time.
+Python dependency caching is enabled to reduce build time.
 
-**GitHub Secrets yang diperlukan:**
+**Required GitHub Secrets:**
 
-| Secret | Keterangan |
+| Secret | Description |
 |---|---|
-| `GCP_SA_KEY` | JSON key dari Service Account GCP |
-| `GCP_PROJECT_ID` | Project ID Google Cloud |
-| `DBT_DATASET` | Nama dataset target di BigQuery |
+| `GCP_SA_KEY` | GCP Service Account JSON key |
+| `GCP_PROJECT_ID` | Google Cloud Project ID |
+| `DBT_DATASET` | Target BigQuery dataset name |
 
 ---
 
 ## Dashboard & Visualization
 
-Data dari `obt_credit_risk` dihubungkan langsung ke Looker Studio untuk monitoring portofolio.
+Data from `obt_credit_risk` is connected directly to Looker Studio for portfolio monitoring.
 
-**[→ Lihat Dashboard Looker Studio](https://lookerstudio.google.com/reporting/30bb83de-cf37-4263-a1d2-b05fccebd04b)**
+**[→ View Looker Studio Dashboard](https://lookerstudio.google.com/reporting/30bb83de-cf37-4263-a1d2-b05fccebd04b)**
 
-Metrics yang dipantau:
-- Default Rate (segmentasi nasabah lancar vs macet)
+Key metrics monitored:
+- Default Rate (performing vs. defaulted loan segmentation)
 - Portfolio Distribution by Income Type & Education Level
 - Debt-to-Income Ratio Distribution
 - Total Applicants & Loan Amount Distribution
@@ -195,4 +241,37 @@ Metrics yang dipantau:
 
 ---
 
-*Ilham — 2026*
+## Project Structure
+
+```
+fintech-credit-analytics/
+├── .github/workflows/
+│   └── dbt_run.yml              # CI/CD pipeline (GitHub Actions)
+├── models/
+│   ├── staging/
+│   │   ├── src_p2p_lending.yml  # Source definitions & tests
+│   │   ├── stg_loans.sql        # Staging: loan applications
+│   │   └── stg_bureau.sql       # Staging: bureau credit history
+│   ├── intermediate/
+│   │   └── int_credit_profile.sql  # Joins + DTI calculation
+│   └── marts/core/
+│       ├── dim_clients.sql      # Dimension: client demographics
+│       ├── fct_loan_applications.sql  # Fact: loan transactions
+│       ├── obt_credit_risk.sql  # One Big Table for dashboards
+│       └── schema.yml           # Marts-level tests
+├── macros/
+│   └── cents_to_idr.sql         # Reusable currency formatting macro
+├── snapshots/
+│   └── snap_dim_clients.sql     # SCD Type 2 snapshot for client changes
+├── tests/
+│   └── assert_loan_amount_is_positive.sql  # Custom business rule test
+├── dbt_project.yml              # dbt project configuration
+├── packages.yml                 # dbt package dependencies
+├── ingest_to_bq.py              # Python ingestion script (CSV → BigQuery)
+├── requirements.txt             # Python dependencies
+└── README.md
+```
+
+---
+
+*Built by Ilham — 2026*

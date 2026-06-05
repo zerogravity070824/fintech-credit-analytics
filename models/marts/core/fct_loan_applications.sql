@@ -1,4 +1,4 @@
-{{ config(materialized='table') }}
+
 
 WITH int_profile AS (
     SELECT * FROM {{ ref('int_credit_profile') }}  -- FIX: dari int bukan stg
